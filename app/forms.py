@@ -11,15 +11,6 @@ class LoginForm(FlaskForm):
     remember_me = BooleanField('Remember Me')
     submit = SubmitField('Sign In')
 
-class RegistrationForm(FlaskForm):
-    username = StringField('username', validators=[DataRequired(), Email()])
-    email = StringField('Email', validators=[DataRequired(), Email()])
-    password = PasswordField('Password', validators=[DataRequired()])
-    password2 = PasswordField(
-            'Repeat Password', validators=[DataRequired(), EqualTo('password')])
-
-    def validate_username(self, username):
-        user = db.session.scalar
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
