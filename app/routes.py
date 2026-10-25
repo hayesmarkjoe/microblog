@@ -1,6 +1,6 @@
 from flask import render_template, flash, redirect, url_for, request
-from app.forms import LoginForm, RegistrationForm, EditProfileForm, EditProfileForm, EmptyForm
-from app.models import User
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, EditProfileForm, EmptyForm, PostForm
+from app.models import User, Post
 from flask_login import current_user, login_user, logout_user, login_required
 from app import app, db
 import sqlalchemy as sa
@@ -15,21 +15,22 @@ def before_request():
         db.session.commit()
 
 
-@app.route('/')
-@app.route('/index')
+@app.route('/', methods=['GET', 'POST'])
+@app.route('/index', methods=['GET', 'POST'])
 @login_required
 def index():
-    #    posts = [
-    #    {
-    #        'author': {'username': 'John'},
-    #        'body': 'Beutiful day in Portland'
-    #    },
-    #    {
-    #        'author': {'username': 'Susan'},
-    #        'body': 'The Avengers movie was so cool!'
-    #    }
-   # ]
-    return render_template('index.html', title='Home')
+    form = PostForm()
+    if form.validate_on_submit():
+        posts = Post(body=form.post.data, author=current_user)
+        db.session.add(posts)
+        db.session.commit()
+        flash('Your post is now live!')
+        return redirect(url_for('index'))
+    posts = db.session.scalars(current_user.following_posts()).all()
+    page = request.args.get('page', 1, type=int)
+    posts = db.paginate(current_user.following_posts(), page=page,
+                          per_page=app.config['POSTS_PER_PAGE'], error_out=False)
+    return render_template('index.html', title='Home', form=form, posts=posts.items)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -137,4 +138,11 @@ def unfollow(username):
     else:
         return redirect(url_for('index'))
 
-                
+@app.route('/explore')
+@login_required
+def explore():
+    page = request.args.get('page', 1, type=int)
+    query = sa.select(Post).order_by(Post.timestamp.desc())
+    posts = db.paginate(query, page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False)
+    return render_template('index.html', title='Explore', posts=posts.items)
+                         
